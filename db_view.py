@@ -4,6 +4,7 @@ from constant import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
 import mysql.connector
 from tkinter import messagebox, StringVar, BooleanVar, simpledialog
 from openpyxl import Workbook, load_workbook
+from openpyxl.styles import PatternFill, Border, Side
 import os
 
 class DB_WINDOW(Window):
@@ -87,7 +88,6 @@ class DB_WINDOW(Window):
         frame.grid(row=1, column=1)
 
         is_align_content: BooleanVar = BooleanVar()
-        is_sort: BooleanVar = BooleanVar()
         is_add_colors: BooleanVar = BooleanVar()
         is_add_borders: BooleanVar = BooleanVar()
 
@@ -96,28 +96,27 @@ class DB_WINDOW(Window):
         is_align_content_checkbox = CTkCheckBox(frame, text="Wyrównaj", variable=is_align_content, onvalue=True, offvalue=False)
         is_align_content_checkbox.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
-        # sortowanie
-        is_sort_checkbox = CTkCheckBox(frame, text="Sortuj", variable=is_sort, onvalue=True, offvalue=False)
-        is_sort_checkbox.grid(row=1, column=0, padx=10, pady=10, sticky="w")
-
         # dodanie kolorów do wierszy
-        is_colors_checkbox = CTkCheckBox(frame, text="Dodaj kolory do kolumn", variable=is_add_colors, onvalue=True, offvalue=False)
-        is_colors_checkbox.grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        is_colors_checkbox = CTkCheckBox(frame, text="Dodaj kolory", variable=is_add_colors, onvalue=True, offvalue=False)
+        is_colors_checkbox.grid(row=1, column=0, padx=10, pady=10, sticky="w")
 
         # dodanie borderów
         is_borders_checkbox = CTkCheckBox(frame, text="Dodaj krawędzie", variable=is_add_borders, onvalue=True, offvalue=False)
-        is_borders_checkbox.grid(row=3, column=0, padx=10, pady=10, sticky="w")
+        is_borders_checkbox.grid(row=2, column=0, padx=10, pady=10, sticky="w")
 
-        style_data_button = CTkButton(frame, text="Zastosuj stylowanie", command=lambda: self.__style_data__(is_align_content.get(), is_sort.get(), is_add_colors.get(), is_add_borders.get()))
-        style_data_button.grid(row=5, column=0, padx=10, pady=10, columnspan=2)
+        style_data_button = CTkButton(frame, text="Zastosuj stylowanie", command=lambda: self.__style_data__(is_align_content.get(), is_add_colors.get(), is_add_borders.get()))
+        style_data_button.grid(row=3, column=0, padx=10, pady=10, columnspan=2)
 
     def __test_connection__(self):
         isValid = self.__validate_connect_form__()
 
         if isValid:
-            connection = self.__connect_to_db__()
-            messagebox.showinfo(title="Połączenie", message="Poprawnie nawiązano połączenie z bazą")
-            connection.close()
+            try:
+                connection = self.__connect_to_db__()
+                messagebox.showinfo(title="Połączenie", message="Poprawnie nawiązano połączenie z bazą")
+                connection.close()
+            except:
+                 messagebox.showerror("Błąd połączenia", message="Połączenie z bazą nie udane. Sprawdź poprawność danych.")
             
 
     def __validate_connect_form__(self):
@@ -140,7 +139,6 @@ class DB_WINDOW(Window):
             return True
 
     def __connect_to_db__(self):
-        try:
             user_name = self.__user_name__.get()
             user_password = self.__user_password__.get()
             host = self.__host__.get()
@@ -148,40 +146,43 @@ class DB_WINDOW(Window):
             
             db_connection = mysql.connector.connect(user=user_name,password=user_password, host=host, database=database_name)
             return db_connection
-        except:
-            messagebox.showerror("Błąd połączenia", message="Połączenie z bazą nie udane. Sprawdź poprawność danych.")
+       
 
     def __import__all__tables__(self):
-        db_connection = self.__connect_to_db__()
+        try: 
+            db_connection = self.__connect_to_db__()
 
-        if db_connection:
-            workbook = Workbook()
-            self.__workbook__ = workbook
-            cursor = db_connection.cursor()
+            if db_connection:
+                workbook = Workbook()
+                self.__workbook__ = workbook
+                cursor = db_connection.cursor()
 
-            cursor.execute("SHOW TABLES;")
+                cursor.execute("SHOW TABLES;")
 
-            tables = cursor.fetchall()
+                tables = cursor.fetchall()
 
-            for table in tables:
-                table_name = table[0]
-                cursor.execute(f"SELECT * FROM {table_name}")
+                for table in tables:
+                    table_name = table[0]
+                    cursor.execute(f"SELECT * FROM {table_name}")
 
-                table_data = cursor.fetchall()
+                    table_data = cursor.fetchall()
 
-                ws = workbook.create_sheet(f'{table_name}-worksheet')
+                    ws = workbook.create_sheet(f'{table_name}-worksheet')
 
-                if ws and table_data: 
-                    self.__active_worksheet__ = ws
+                    if ws and table_data: 
+                        self.__active_worksheet__ = ws
 
-                    column_names = [column[0] for column in cursor.description]
-                    ws.append(column_names)
+                        column_names = [column[0] for column in cursor.description]
+                        ws.append(column_names)
 
-                    for row in table_data:
-                        ws.append(row)
+                        for row in table_data:
+                            ws.append(row)
 
-        self.__on_safe__()
-        db_connection.close()
+            self.__on_safe__()
+            db_connection.close()
+        
+        except:
+            messagebox.showerror("Błąd połączenia", message="Połączenie z bazą nie udane. Sprawdź poprawność danych.")
     
     def __on_safe__(self):
         try:
@@ -219,7 +220,43 @@ class DB_WINDOW(Window):
                 adjusted_width = (max_length + 2) * 1.2
                 ws.column_dimensions[column].width = adjusted_width
 
-    def __style_data__(self, is_align_content: bool, is_sort: bool, is_add_colors: bool,is_add_borders: bool):
+    def __add_colors__(self):
+        if self.__workbook__:
+            ws = self.__workbook__.active
+            # Dodaj kolory dla pierwszego wiersza
+            first_row_fill = PatternFill(start_color='8B93FF', end_color='8B93FF', fill_type='solid')
+            for col in range(1, ws.max_column + 1):
+                ws.cell(row=1, column=col).fill = first_row_fill
+
+           # Dodaj różne kolory dla każdej kolumny (co druga kolumna inny kolor)
+            for col in range(1, ws.max_column + 1):
+                if col % 2 == 0:  # Jeśli kolumna jest parzysta
+                    column_fill = PatternFill(start_color='FA7070', end_color='FA7070', fill_type='solid')  # Zielony kolor
+                else:
+                    column_fill = PatternFill(start_color='C4E4FF', end_color='C4E4FF', fill_type='solid')  # Żółty kolor
+                for row in range(2, ws.max_row + 1):
+                    ws.cell(row=row, column=col).fill = column_fill
+    
+    def __add_borders(self):
+        if self.__workbook__:
+            ws = self.__workbook__.active
+
+            thin_border = Border(left=Side(style='thin'), 
+                     right=Side(style='thin'), 
+                     top=Side(style='thin'), 
+                     bottom=Side(style='thin'))  # Grubeść 1 dla kolumn i wierszy
+
+            for row in ws.iter_rows():
+                for cell in row:
+                    if cell.row == 1:  # Dla pierwszego wiersza (nagłówki)
+                        cell.border = Border(left=Side(style='thick'), 
+                                right=Side(style='thick'), 
+                                bottom=Side(style='thick'))  # Grubszy border na dole
+                    else:
+                        cell.border = thin_border
+
+
+    def __style_data__(self, is_align_content: bool, is_add_colors: bool,is_add_borders: bool):
         try:
             file  = filedialog.askopenfile(mode='r', initialdir="./", filetypes=[("xlsx", '*.xlsx'),('CSV', '*.csv')])
 
@@ -234,13 +271,19 @@ class DB_WINDOW(Window):
                     
                     if is_align_content:
                         self.__align_content__()
+
+                    if is_add_colors:
+                        self.__add_colors__()
+
+                    if is_add_borders:
+                        self.__add_borders()
        
                 self.__workbook__.save(f'{file_name}')
 
             else:
                 raise Exception("No file selected")
         except:
-            messagebox.showerror(title="Błąd przy wyborze pliku", message="Musisz wybrać plik")
+            messagebox.showerror(title="Błąd przy wyborze pliku", message="Nie wybrano pliku lub aktualnie wybrany plik jest już otwarty.")
 
     def open_window(self):
         super().open_window()
