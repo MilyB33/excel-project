@@ -1,5 +1,5 @@
 
-# Simple excel application with python
+# Simple excel application with openpyxl
 
 Application allows to import data from .txt, .csv files and MySQL database into your excel workbook and style it.
 
