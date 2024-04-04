@@ -5,6 +5,7 @@ Application allows to import data from .txt, .csv files and MySQL database into 
 
 
 ## Installation
+Make sure you have python3 and pip3 installed
 
 In order to run the project you need to install these packages:
 
