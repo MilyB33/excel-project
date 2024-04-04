@@ -1,2 +1,11 @@
 MIN_WINDOW_WIDTH = 800
 MIN_WINDOW_HEIGHT = 800
+
+HEADER_COLOR = '8B93FF'
+EVEN_COLUMN_COLOR = 'FA7070'
+ODD_COLUMN_COLOR = 'C4E4FF'
+
+# Default database data
+DB_ROOT = 'root'
+DB_HOST = '127.0.0.1'
+DB_NAME = 'linie_lotnicze'

@@ -1,18 +1,19 @@
 from customtkinter import CTk, CTkFrame, CTkEntry, CTkButton,CTkLabel, CTkCheckBox, filedialog, END
 from windows import Window
-from constant import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
+import constant
 import mysql.connector
 from tkinter import messagebox, StringVar, BooleanVar, simpledialog
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill, Border, Side
 import os
+from pathlib import Path
 
 class DB_WINDOW(Window):
     __workbook__: Workbook | None = None
-    __active_worksheet__ = None
+    __workbook_path__: str | None = None
 
     def __init__(self, root: CTk):
-        super().__init__("Łączenie z bazą", MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT, root)
+        super().__init__("Łączenie z bazą", constant.MIN_WINDOW_WIDTH, constant.MIN_WINDOW_HEIGHT, root)
 
     def __create_layout__(self):
         frame = CTkFrame(self.window, fg_color="transparent")
@@ -170,8 +171,6 @@ class DB_WINDOW(Window):
                     ws = workbook.create_sheet(f'{table_name}-worksheet')
 
                     if ws and table_data: 
-                        self.__active_worksheet__ = ws
-
                         column_names = [column[0] for column in cursor.description]
                         ws.append(column_names)
 
@@ -190,7 +189,8 @@ class DB_WINDOW(Window):
                 filename = simpledialog.askstring("Filename", "Podaj nazwę pliku do jakiego zapisać")
 
                 if filename:
-                    self.__workbook__.save(f'{filename}.xlsx')
+                    self.__workbook__.save(f'./results/{filename}.xlsx')
+                    self.__workbook_path__ = f'./results/{filename}.xlsx'
                     messagebox.showinfo(title="Zapisano", message="Poprawnie zapisano")
                 else:
                     messagebox.showerror(title="Błąd zapisu", message="Nie wybrano nazwy pliku")
@@ -200,9 +200,9 @@ class DB_WINDOW(Window):
             messagebox.showerror(title="Błąd zapisu", message="Bład zapisu")
 
     def __set_default_data(self):
-        self.__user_name__.set("root")
-        self.__host__.set("127.0.0.1")
-        self.__database_name__.set("linie_lotnicze")
+        self.__user_name__.set(constant.DB_ROOT)
+        self.__host__.set(constant.DB_HOST)
+        self.__database_name__.set(constant.DB_NAME)
 
     def __align_content__(self):
          if self.__workbook__:
@@ -224,16 +224,16 @@ class DB_WINDOW(Window):
         if self.__workbook__:
             ws = self.__workbook__.active
             # Dodaj kolory dla pierwszego wiersza
-            first_row_fill = PatternFill(start_color='8B93FF', end_color='8B93FF', fill_type='solid')
+            first_row_fill = PatternFill(start_color=constant.HEADER_COLOR, end_color=constant.HEADER_COLOR, fill_type='solid')
             for col in range(1, ws.max_column + 1):
                 ws.cell(row=1, column=col).fill = first_row_fill
 
            # Dodaj różne kolory dla każdej kolumny (co druga kolumna inny kolor)
             for col in range(1, ws.max_column + 1):
                 if col % 2 == 0:  # Jeśli kolumna jest parzysta
-                    column_fill = PatternFill(start_color='FA7070', end_color='FA7070', fill_type='solid')  # Zielony kolor
+                    column_fill = PatternFill(start_color=constant.EVEN_COLUMN_COLOR, end_color=constant.EVEN_COLUMN_COLOR, fill_type='solid')  # Zielony kolor
                 else:
-                    column_fill = PatternFill(start_color='C4E4FF', end_color='C4E4FF', fill_type='solid')  # Żółty kolor
+                    column_fill = PatternFill(start_color=constant.ODD_COLUMN_COLOR, end_color=constant.ODD_COLUMN_COLOR, fill_type='solid')  # Żółty kolor
                 for row in range(2, ws.max_row + 1):
                     ws.cell(row=row, column=col).fill = column_fill
     
@@ -244,7 +244,7 @@ class DB_WINDOW(Window):
             thin_border = Border(left=Side(style='thin'), 
                      right=Side(style='thin'), 
                      top=Side(style='thin'), 
-                     bottom=Side(style='thin'))  # Grubeść 1 dla kolumn i wierszy
+                     bottom=Side(style='thin')) 
 
             for row in ws.iter_rows():
                 for cell in row:
@@ -258,14 +258,16 @@ class DB_WINDOW(Window):
 
     def __style_data__(self, is_align_content: bool, is_add_colors: bool,is_add_borders: bool):
         try:
-            file  = filedialog.askopenfile(mode='r', initialdir="./", filetypes=[("xlsx", '*.xlsx'),('CSV', '*.csv')])
+   
 
-            if file:
-                file_path = os.path.abspath(file.name)
-                file_name = os.path.basename(file.name)
-                
-                self.__workbook__ = load_workbook(file_path)
-
+            if  not self.__workbook__:
+                file = filedialog.askopenfile(mode='r', initialdir="./", filetypes=[("xlsx", '*.xlsx'),('CSV', '*.csv')])
+                if file: 
+                    file_path = os.path.abspath(file.name)
+                    self.__workbook__ = load_workbook(file_path)
+                    self.__workbook_path__ = file_path
+            
+            if self.__workbook_path__:
                 for sheet_name in self.__workbook__.sheetnames:
                     self.__workbook__.active = self.__workbook__[sheet_name]              
                     
@@ -278,7 +280,9 @@ class DB_WINDOW(Window):
                     if is_add_borders:
                         self.__add_borders()
        
-                self.__workbook__.save(f'{file_name}')
+                
+                self.__workbook__.save(self.__workbook_path__)
+                messagebox.showinfo(title="Poprawnie zapisano", message="Poprawnie zastosowano style")
 
             else:
                 raise Exception("No file selected")

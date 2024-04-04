@@ -1,6 +1,6 @@
 from customtkinter import CTk, CTkFrame, CTkEntry, CTkButton, CTkCheckBox, filedialog, END
 import os
-from constant import MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH
+import constant
 from windows import Window
 from tkinter import messagebox, BooleanVar, simpledialog
 from openpyxl import Workbook
@@ -10,10 +10,9 @@ class CSV_WINDOW(Window):
     __file_path__: str | None = None
     __file_name__: str | None = None
     __workbook__: Workbook | None = None
-    __active_worksheet__ = None
 
     def __init__(self, root: CTk):
-        super().__init__("Import plików CSV", MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT, root)
+        super().__init__("Import plików CSV", constant.MIN_WINDOW_WIDTH, constant.MIN_WINDOW_HEIGHT, root)
 
     def __create_layout__(self):
         frame = CTkFrame(self.window, bg_color='lightblue')
@@ -72,7 +71,6 @@ class CSV_WINDOW(Window):
         self.__workbook__ = workbook
 
         ws = workbook.active
-        self.__active_worksheet__ = ws
 
         if ws and self.__file_name__:
             ws.title = f'{self.__file_name__}-worksheet-{len(workbook.worksheets) + 1}'
@@ -94,7 +92,9 @@ class CSV_WINDOW(Window):
         self.__on_safe__()
 
     def __load_all_data__(self):
-        if self.__file_path__ and self.__workbook__ and self.__active_worksheet__:
+        ws = self.__workbook__.active
+        
+        if self.__file_path__ and self.__workbook__ and ws:
             with open(self.__file_path__, 'r') as file:
                 lines = file.readlines()
 
@@ -102,7 +102,7 @@ class CSV_WINDOW(Window):
         for row_num, line in enumerate(lines, start=1):
             columns = line.strip().split('\t')  # Zakładamy, że dane są rozdzielone tabulatorami ('\t')
             for col_num, value in enumerate(columns, start=1):
-                self.__active_worksheet__.cell(row=row_num, column=col_num, value=value)
+               ws.cell(row=row_num, column=col_num, value=value)
     
     def __on_safe__(self):
         try: 
@@ -110,7 +110,7 @@ class CSV_WINDOW(Window):
                 filename = simpledialog.askstring("Filename", "Podaj nazwę pliku do jakiego zapisać")
 
                 if filename:
-                    self.__workbook__.save(f'{filename}.xlsx')
+                    self.__workbook__.save(f'./results/{filename}.xlsx')
                     messagebox.showinfo(title="Zapisano", message="Poprawnie zapisano")
                 else:
                     messagebox.showerror(title="Błąd zapisu", message="Nie wybrano nazwy pliku")
@@ -120,18 +120,18 @@ class CSV_WINDOW(Window):
             messagebox.showerror(title="Błąd zapisu", message="Brak aktywnego workbooka lub excel jest już otwarty. Upewnij się że wszystkie okna są zamknięte")
 
     def __color_head_row__(self):
-        if self.__active_worksheet__:
-            ws = self.__active_worksheet__
+        ws = self.__workbook__.active
 
+        if ws:
             for col in range(1, ws.max_column + 1):
                 if ws.cell(row=1, column=col).value != '':
                     ws.cell(row=1, column=col).fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
 
     
     def __align_content__(self):
-        if self.__active_worksheet__:
-            ws = self.__active_worksheet__
+        ws = self.__workbook__.active
 
+        if ws:
             for col in ws.columns:
                 max_length = 0
                 column = col[0].column_letter
@@ -145,6 +145,7 @@ class CSV_WINDOW(Window):
                 ws.column_dimensions[column].width = adjusted_width
 
     def __sort__(self):
-        if self.__active_worksheet__:
-            ws = self.__active_worksheet__
+        ws = self.__workbook__.active
+
+        if ws:
             ws.sort_column = 1
