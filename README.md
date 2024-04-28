@@ -17,7 +17,7 @@ In order to run the project you need to install these packages:
 You can do it with this command:
 
 ```powershell
-pip3 install openpyxl tkinter customtkinter mysql
+pip3 install openpyxl tk customtkinter mysql-connector-python
 ```
 
 For connecting to database you can use any MySQL server but I recommend xampp
